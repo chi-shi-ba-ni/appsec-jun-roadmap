@@ -1,0 +1,21 @@
+Создание виртуальной машины (ВМ) с ОС Linux Ubuntu 64-bit
+1. Система - выделяем основную память 5120
+2. Дисплей - 128 мб
+3. Носитли - Контроллер SATA - жесткий диск (.vdi), Контроллер IDE - образ диска (.iso) ubuntu ver 22.04.5 desktop amd64 + VBoxGuestAdditions.iso
+4. Сеть - сетевой мост
+5. Общие папки - по желанию, но лучше сделать (папка называется Ubuntu_share)
+
+После прохождения всех установок и обновлений, настроим общий буфер обмена:
+- включаем двунаправленную функцию drag and drop, общий буфер обмена, общие папки во вкладке "Устройства".
+
+Настраиваем VBox Guest Additional
+- заходим в терминал и выполняем команды
+sudo apt-get install -y dkms build-essential linux-headers-generic linux-headers-$(uname -r)
+sudo reboot
+sudo mkdir -m 777 /share-guest
+sudo mount -t vboxsf Ubuntu_share /share-guest/
+sudo reboot
+sudo /media/appsec/VBox_GAs_6.1.50/VBoxLinuxAdditions.run
+sudo reboot
+
+
