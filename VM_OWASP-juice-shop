@@ -1,0 +1,35 @@
+Настраиваем на ВМ owasp juice shop
+OWASP Juice Shop — это намеренно уязвимое веб-приложение, созданное в рамках проекта OWASP, содержащие многие веб уязвимости
+
+Установка juice-shop на ВМ user (не сервер)
+1. установим curl
+sudo snap install curl
+
+2. устанавливаем node.js
+2.1 добавим официальный репозиторий // всегда проверяем актуальную версию для owasp juice shop
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+2.2 устанавливаем node.js и пакет build-essential
+sudo apt install -y nodejs build-essential
+
+3. установим git
+sudo apt install git
+
+4. Клонируем на ВМ образ juice-shop
+git clone https://github.com/juice-shop/juice-shop.git --depth 1
+Каталог juice-shop появится в домашнем каталоге, выполняем команды
+cd juice-shop
+npm install
+
+//если вылезает ошибка: Cannot read properties of null (reading 'edgesOut')
+исправляем:
+rm -rf node_modules frontend/node_modules package-lock.json frontend/package-lock.json
+npm cache clean --force
+npm install --legacy-peer-deps
+
+5. Запускаем juice-shop (слушается на порту 3000)
+npm start
+
+в браузере запускаем: http://localhost:3000
+
+
+
