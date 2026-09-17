@@ -1,6 +1,9 @@
 Настраиваем на ВМ owasp juice shop
 OWASP Juice Shop — это намеренно уязвимое веб-приложение, созданное в рамках проекта OWASP, содержащие многие веб уязвимости
 
+ссыалка на материал в GIT:
+https://github.com/juice-shop/juice-shop#from-sources
+
 Установка juice-shop на ВМ user (не сервер)
 1. установим curl
 sudo snap install curl
