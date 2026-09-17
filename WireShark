@@ -1,0 +1,31 @@
+Guides:
+- https://www.wireshark.org/docs/wsug_html/#ChBuildInstallWinUninstall 
+- https://wiki.wireshark.org/ 
+
+1.Install WireShark
+1.1 For Linux
+Commands:
+sudo apt install wireshark
+<should non-superusers to capture packets - yes>
+which wireshark // find out where is whireshark
+
+2. Start wireshark
+Command to launch WireShark app:
+sudo whireshark
+
+Но если мы хотим от обычного пользователя, необходимо расширить права для утилиты dumpcap, которая как раз и перехватывает пакеты:
+для этого добавим обычного юзера  в группу wireshark и обновим capabilities утилиты dumpcap
+sudo usermod -aG wireshark appsec
+sudo dpkg-reconfigure wireshark-common
+sudo reboot
+
+3. App Interface
+- показать список горячих клавиш View → Internals → Keyboard Shortcuts
+- остальное смотри в Guide
+
+4. Фильтр перехвата
+- Фильтры перехвата Wireshark написаны на языке фильтров libpcap
+
+5. Output file formats
+- pcapng - гибкий и расширяемый преемник формата libpcap
+- pcap -  по умолчанию испольуется библиотекой захвата пакетов libpcap. Используется tcpdump, _Snort, Nmap, Ntop и другими инструментами
