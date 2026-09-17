@@ -1,0 +1,17 @@
+Burp Suite Guide
+- https://portswigger.net/burp/documentation/desktop
+
+
+1. Installing Burp Suite
+1.1 Можно прям с сайта
+1.2 Можно через command line
+wget -O burpsuite_community.sh "https://portswigger.net/burp/releases/download?product=community&type=Linux"
+sudo chmod 777 burpsuite_community.sh 
+sudo ./burpsuite_community.sh
+
+2. Starting Project
+2.1 есть встроенный Burp Browser
+2.2 
+
+3. Proxy
+описать как он работает 
