@@ -1,0 +1,84 @@
+  Разбор файлов захвата ICMP TCP HTTP (juice-shop) соединений
+
+1. ICMP
+Дамп Wireshark-1.pcapng
+
+Рассматриваем цепочку:
+117-118 ARP
+118-120 ICMP
+133-134 ICMP
+узел .44 пингует узел .42
+
+Разбор:
+Перед пингом есть ARP запрос, т.к. узлу .44 необходимо узнать какой MAC-адрес соответствует ip .42
+После получения MAC-адреса формируется Ethernet-кадр с ICMP
+
+Разбор Packet Details ICMP ECHO REQUEST
+Суть: узел спрашивает другой узел "ты доступен?"
+-> Frame 119: Packet, 98 bytes on wire (784 bits), 98 bytes captured (784 bits) on interface enp0s3, id 0
+  Кадр имеет размер 98 байт (складывается из ethernet->IPv4->ICMP->ICMP Data, Сверху вниз вложение)
+
+-> Ethernet II, Src: PCSSystemtec_7e:49:f1 (08:00:27:7e:49:f1), Dst: PCSSystemtec_78:a3:c6 (08:00:27:78:a3:c6)
+    Destination: PCSSystemtec_78:a3:c6 (08:00:27:78:a3:c6)
+    - это MAC получателя .42
+    Source: PCSSystemtec_7e:49:f1 (08:00:27:7e:49:f1)
+    - это MAC отправителя .44
+    Type: IPv4 (0x0800)
+    - сообщает, что внутри Ethernet находится IPv4
+  Т.е. Ethernet отвечает за доставку в пределах локальной L2-сети (канальный уровень)
+
+-> Internet Protocol Version 4, Src: 192.168.1.44, Dst: 192.168.1.42
+    Version: 4
+    - Сообщение о версии протокола, это IPv4
+    Header Length: 20 bytes (5)
+    - размер IP-заголовка (20 байт - минимальный стандартный размер без дополнительных Options)
+    Differentiated Services Field: 0x00 (DSCP: CS0, ECN: Not-ECT)
+    - DSCP используется для приоритизации трафика (в примере они не используется)
+    - ECN используется для сигнализации перегрузки сети без потери пакетов (в примере они не используется)
+    Total Length: 84
+    - размер IP-пакета (внутри содержит IPv4 header, ICMP header, Data) 
+    Identification: 0xd542 (54594)
+    - это идентификатор IP-пакета. Необходим, если есть фрагментация, когда один IP-пакет разбивают на несколько, и надо понять где 1я часть, где 2я
+    Далее идут флаги
+    Flags: 0x2, Don't fragment
+    - Don't fragment означает запрет фрагментации
+    Fragment Offset: 0
+    - означает является ли пакет последующим фрагментом, в данном случае - нет
+    Time to Live: 64
+    - TTL ограничивает количество маршрутизаторов, через которые этот пакет может пройти. Каждый маршрутизатор уменьшает TTL
+    При достижении TTL=0, пакет уничтожается
+    Protocol: ICMP (1)
+    - IPv4 сообщает, что у него внутри Payload-а, в данном случае 1 - это ICMP
+    Header Checksum: 0xe1bf [validation disabled]
+    [Header checksum status: Unverified]
+    - контрольная сумма IP-заголовка, нужна для проверки целостности заголовка IP-пакета 
+    Source Address: 192.168.1.44
+    - отправитель IP-пакета
+    Destination Address: 192.168.1.42
+    - получатель
+
+-> Internet Control Message Protocol
+    Type: Echo (ping) request (8)
+    - тип сообщения, 8 - это echo request (ответь мне, если доступен)
+    Code: 0
+    - иногда уточняет разновидность сообщения
+    Checksum: 0xbe25 [correct]
+    [Checksum Status: Good]
+    - контрольная сумма ICMP-сообщения и проверка    
+    Identifier (BE): 5 (0x0005)
+    - помогает связать echo request и echo reply с конкретынм пингом
+    Identifier (LE): 1280 (0x0500)
+    Sequence Number (BE): 1 (0x0001)
+    Sequence Number (LE): 256 (0x0100)
+    - они отвечают за номера пингов
+    [Response frame: 120] 
+    - wireshark сообщает в каком пакете ответ на этот ICMP запрос
+    ICMP Data: 9031ac6a000000003b65030000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637
+    - 56 байтов, данные которые пинг положил внутрь ICMP
+
+Разбор Packet Details ICMP ECHO REPLY
+Почти всё тоже самое, но зеркально
+-> Internet Control Message Protocol
+  Type: Echo (ping) request (0)
+  - тип сообщения, 0 - это echo reply (да, я доступен, отвечаю)
+
