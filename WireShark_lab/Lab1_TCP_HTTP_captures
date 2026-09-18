@@ -1,11 +1,11 @@
-  Разбор файлов захвата ICMP TCP HTTP (juice-shop) соединений
+    Разбор файлов захвата ICMP TCP HTTP (juice-shop) соединений
 
 1. ICMP
 Дамп Wireshark-1.pcapng
 
 Рассматриваем цепочку:
 117-118 ARP
-118-120 ICMP
+119-120 ICMP
 133-134 ICMP
 узел .44 пингует узел .42
 
@@ -13,7 +13,7 @@
 Перед пингом есть ARP запрос, т.к. узлу .44 необходимо узнать какой MAC-адрес соответствует ip .42
 После получения MAC-адреса формируется Ethernet-кадр с ICMP
 
-Разбор Packet Details ICMP ECHO REQUEST
+1.1 Разбор Packet Details ICMP ECHO REQUEST
 Суть: узел спрашивает другой узел "ты доступен?"
 -> Frame 119: Packet, 98 bytes on wire (784 bits), 98 bytes captured (784 bits) on interface enp0s3, id 0
   Кадр имеет размер 98 байт (складывается из ethernet->IPv4->ICMP->ICMP Data, Сверху вниз вложение)
@@ -76,9 +76,174 @@
     ICMP Data: 9031ac6a000000003b65030000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637
     - 56 байтов, данные которые пинг положил внутрь ICMP
 
-Разбор Packet Details ICMP ECHO REPLY
+1.2 Разбор Packet Details ICMP ECHO REPLY
 Почти всё тоже самое, но зеркально
 -> Internet Control Message Protocol
   Type: Echo (ping) request (0)
   - тип сообщения, 0 - это echo reply (да, я доступен, отвечаю)
+
+
+2. TCP
+Дамп Wireshark-2.pcapng
+
+Рассматриваем цепочку: TCP-соединение клиента и сервера, находятся на одной ВМ
+4 client -> server SYN
+5 server -> client SYN, ACK
+6 client -> server ACK // после соединение ESTABLISHED
+7 client -> server HTTP Get
+8 server -> client ACK
+9 server -> client HTTP 304
+10 client -> server ACK
+11 client -> server FIN, ACK
+12 server -> client FIN, ACK
+13 lient -> server ACK
+
+127.0.0.1:43470 (client) - 127.0.0.1:3000 (server)
+Прим.: TCP всегда работает парой: IP + port
+
+2.1 TCP Handshake: пакеты 4-6
+2.1.1 Frame 4 - SYN ("я хочу создать TCP-соединение с портом 3000")
+-> Frame 4: Packet, 74 bytes on wire (592 bits), 74 bytes captured (592 bits) on interface lo, id 0
+    - кадр 74 байта
+
+-> Ethernet II, Src: 00:00:00_00:00:00 (00:00:00:00:00:00), Dst: 00:00:00_00:00:00 (00:00:00:00:00:00)
+    - в связи с тем, что у нас loopback, пакет физические не идет через сетевую карту и Ethernet
+    MAC-адреса не требуются
+    внутри лежит IPv4
+
+-> Internet Protocol Version 4, Src: 127.0.0.1, Dst: 127.0.0.1
+    все, что было описано выше в IPv4
+    Protocol: TCP (6)
+    - payload необходимо передать TCP
+
+-> Transmission Control Protocol, Src Port: 43470, Dst Port: 3000, Seq: 0, Len: 0
+    - Src Port: 43470 - временный клиентский порт, браузер/приложение открыло его для этой TCP-сесии
+    - Dst Port: 3000 - сервервный порт, клиент хочет TCP-соединение с сервисом, слушающим localhost:3000
+    - Seq: 0 - начальное случайное значение (фактически TCP использует другое рандомное число, но для удобства WireShark показывает так)
+      Прим.: Seq (Sequence Number) — номер последовательности, использующийся для упорядочивания данных в рамках установления соединения TCP
+      Прим.: Len: 0 указывает на то, что размер TCP-сегмента в этом пакете составляет 0 байт
+    Acknowledgment Number: 0
+    Acknowledgment number (raw): 0
+    - в первом SYN клиент ничего не подтверждает от сервера, поэтому такие значения у ACKов
+    Flags: 0x002 (SYN)
+    1 = Syn: Set 
+    - означает, что клиент хочет синхронизировать Seq и создавать TCP-соединение
+    Window: 65495
+    - означает сколько данный я сейчас готов принять, прежде чем потребуется дальнейшее подтверждение/обновление окна
+      мы сообщаем сколько данных буфер способен сейчас принять
+    Options: (20 bytes), Maximum segment size, SACK permitted, Timestamps, No-Operation (NOP), Window scale
+    MSS: 65495
+    - макс. TCP payload одного сегмента, который я хочу получать - до указанного размера
+    Прим.: здесь число большое, т.к. это loopback, физическое ethernet MTU-сети между сторонами нет
+    TCP Option - SACK permitted
+    - означает я умею выборочноо сообщать, какие части данных я получил
+    TCP Option - Timestamps: TSval 500979896, TSecr 0
+    - в TCP можно добавлять временные метки, которые применяются для оценки времени передачи и защиты от некоторых проблем со старыми сегментами
+    TCP Option - Window scale: 7 (multiply by 128)
+    - означает, что TCP может расширять стандартное поле Recieve Window
+
+2.1.2 Frame 5 - SYN, ACK (ответ сервера на запрос TCP-соединения от клиента)
+-> Transmission Control Protocol, Src Port: 3000, Dst Port: 43470, Seq: 0, Ack: 1, Len: 0
+    - ACK = 1, т.к. сервер говорит: я получил твой SYN, следующее, что я от тебя ожидаю, это - 1
+    Flags: 0x012 (SYN, ACK)
+    - SYN говорит "я тоже сообщаю тебе свой начальный sequence number", а ACK говорит "твой SYN я получил" 
+
+2.1.3 Frame 6 - последний ACK, после которогг TCP ESTABLISHED
+Означает, что теперь можно передавать пользовательские данные
+Только после этого появляется HTTP
+  
+3. HTTP  врамках этой TCP-сессии 
+пакет 7 - HTTP request
+пакет 9 - HTTP response
+Между ними пакет 8 - ACK, который просто подтверждает получение TCP-данных
+Прим.: HTTP Request и TCP ACK - не одно и то же действие. HTTP говорит "дай мне конкретный ресурс", TCP - "байты до определенногоseq я успешно получил"
+
+3.1 Пакет 7 Frame 7: Packet, 593 bytes on wire (4744 bits), 593 bytes captured (4744 bits) on interface lo, id 0
+-> Transmission Control Protocol, Src Port: 43470, Dst Port: 3000, Seq: 1, Ack: 1, Len: 527
+    Flags: PSH, ACK
+    - PCH говорит "эти данные желательно передать приложению без ненужной задержки"
+    - когда len имеет значение, то ACK ожидатеся: seq сам по себе как единица + len (1+527)
+    Прим.: ACK = номер следующего байта, который я хочу поулучить
+
+-> Hypertext Transfer Protocol
+    GET /rest/admin/application-configuration HTTP/1.1\r\n
+    - означает "получить ресурс, путь, версия протокола"
+    Host: localhost:3000\r\n
+    - приложение находится по следующему адресу
+    User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0\r\n
+    - информация, которую браузер сообщает о себе
+    Accept: application/json, text/plain, */*\r\n
+    Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3\r\n
+    Accept-Encoding: gzip, deflate, br, zstd\r\n
+    - браузер сообщает, что ожидает получить
+    Referer: http://localhost:3000/\r\n
+    - содержит URL-адрес веб-страницы, с которой был осуществлён переход на текущую страницу, указывает серверу, откуда поступил запрос
+    Cookie: language=en\r\n
+    - браузер отправляет серверу cookie и сохраненная настройка языка - английский
+    Sec-Fetch-Dest: empty\r\n
+    Sec-Fetch-Mode: cors\r\n
+    Sec-Fetch-Site: same-origin\r\n
+    - этот набор заголовков указывает на запрос, который сделан с того же источника, что и целевой ресурс
+    If-None-Match: W/"5c19-KAzWjzBr3ZdE6m+xf9FCn8I0LPU"\r\n
+    - это обхясняет почему потом сервер ответил 304: браузер говорит, что у него уже есть закэшированная версия этого ресурса с таким ETag.
+    Если ресурс с тех пор не изменился, не присылай его
+
+3.2 Пакет 9 Frame 9: Packet, 372 bytes on wire (2976 bits), 372 bytes captured (2976 bits) on interface lo, id 0
+Ответ сервера, 304 Not Modified означает, что ресурс не изменился
+-> Hypertext Transfer Protocol
+    Access-Control-Allow-Origin: *\r\n
+    - означает, что любой origin может получать соответствующий ресурс в контексе CORS
+    X-Content-Type-Options: nosniff\r\n
+    - гворит браузеру "не пытайся сам угадать другой MIME-тип содержимого". Это security заголовок
+    X-Frame-Options: SAMEORIGIN\r\n
+    - говорит браузеру "эту страницу можно помещать во frame только страницам того же origin". Используется как защита от clickjacking
+    Прим.: кликджекинг - это вредоносная техника обмана пользователей в интернете, при которой злоумышленник использует фальшивый интерфейс, 
+    чтобы заставить человека нажать на элемент веб-страницы, который невидим или замаскирован под другой элемент.
+    Feature-Policy: payment 'self'\r\n
+    - политика дсотупа к некоторым браузерным возможностям
+    X-Recruiting: /#/jobs\r\n
+    - нестандартный заголовок, префикс Х используется для собственных дополнительных HTTP headers.
+    в данном случае приложение сообщает путь
+    ETag
+    - идентификатор версии ресурса, позволяет браузеру и серверу понять, изменялся ли ресурс с точки зрения кэширования
+    Connection: keep-alive\r\n
+    - сервер говорит "после этого ответа TCP-соединение можно оставить пока открытым"
+
+4. Закрытие TCP-соединения
+4.1 Пакет 11 client -> server FIN, ACK
+-> Transmission Control Protocol, Src Port: 43470, Dst Port: 3000, Seq: 528, Ack: 307, Len: 0
+клиент говорит "я больше не собираюсь передавать данные"
+
+4.2 Пакет 12 server -> client FIN, ACK
+-> Transmission Control Protocol, Src Port: 3000, Dst Port: 43470, Seq: 307, Ack: 529, Len: 0
+    - сервер подтверждает FIN клиента и сообщает, что со своей сороны тоже заканчивает передачу
+
+4.3 Пакет 13 client -> server ACK
+-> Transmission Control Protocol, Src Port: 43470, Dst Port: 3000, Seq: 529, Ack: 308, Len: 0
+    - клиент подтверждает FIN сервера, соединение закончено
+
+Если представить весь второй дамп как одну историю, то получается:
+
+Client                                 Server
+127.0.0.1:43470                    127.0.0.1:3000
+      │                                    │
+      │ -------- SYN --------------------> │ 4
+      │ <------- SYN + ACK --------------- │ 5
+      │ -------- ACK --------------------> │ 6
+      │                                    │
+      │     TCP CONNECTION ESTABLISHED     │
+      │                                    │
+      │ ----- HTTP GET /rest/... --------> │ 7
+      │ <---------- TCP ACK -------------- │ 8
+      │                                    │
+      │ <----- HTTP 304 Not Modified ----- │ 9
+      │ ---------- TCP ACK --------------> │ 10
+      │                                    │
+      │ ---------- FIN, ACK -------------> │ 11
+      │ <--------- FIN, ACK -------------- │ 12
+      │ ---------- ACK ------------------> │ 13
+      │                                    │
+      │         CONNECTION CLOSED          │
+
+
 
