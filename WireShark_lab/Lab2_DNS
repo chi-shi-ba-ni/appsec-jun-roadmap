@@ -1,0 +1,120 @@
+1. запускаем wireshark
+2. в терминале смотрим DNS-настройки:
+cat /etc/resolv.conf
+смотрим че там:
+# This is a dynamic resolv.conf file for connecting local clients to the
+# internal DNS stub resolver of systemd-resolved. This file lists all
+# configured search domains.
+
+nameserver 127.0.0.53 - локальный DNS-резолвер, входящий в состав системы systemd. 
+Он обеспечивает разрешение сетевых имён для локальных приложений, управляет кэшированием DNS-ответов.
+Current DNS Server: 192.168.1.1 - реальный DNS резолвер
+
+комнада resolvectl status - позволяет получить информацию о настроенных DNS-серверах для каждого сетевого интерфейса, 
+а также о текущих настройках разрешения имён
+
+3. практика nslookup
+- nslookup [сайт] - позволяет пользователю напрямую взаимодействовать с DNS-серверами, запрашивая информацию о хостах, доменах или других DNS-записях
+
+nslookup apple.com
+Server:		127.0.0.53 (наш сервер)
+Address:	127.0.0.53#53
+
+Non-authoritative answer:
+Name:	apple.com
+Address: 17.253.144.10
+Name:	apple.com
+Address: 2620:149:af0::10
+
+4. практика dig
+- dig [веб-сайт]- направляет запросы к DNS-серверам и получать детальную информацию о доменных именах
+
+dig apple.com
+;; QUESTION SECTION: 
+;apple.com.			IN	A
+
+;; ANSWER SECTION:
+apple.com.		397	IN	A	17.253.144.10
+(имя)   (TTL) (интернет (A - IPv4 DNS запись) (IP-адрес)
+               класс)
+
+;; Query time: 7 msec
+;; SERVER: 127.0.0.53#53(127.0.0.53) (UDP)
+
+5. Wireshark практика
+5.1 поставим фильтр захвата dns
+5.2 с терминала nslookup microsoft.com
+Рассмотрим Запрос (frame 22) и Ответ (frame 23)
+(frame 22)
+-> Ethernet II
+    - Src: PcsCompu_78:a3:c6 (08:00:27:78:a3:c6) (MAC-address VM), Dst: ZyxelCom___:__:__ (__:__:__:__:__:__) (MAC-address шлюза/локального DNS-сервера)
+
+-> IPv4 отажаются IP-адреса отправителя и назначения, в поле Protocol: UDP (17) - т.к. DNS ходит по UDP (в обычных случаях)
+
+-> UDP
+    - Src Port: 41804 (временный, его выбрала сама ОС), Dst Port: 53
+    
+-> Domain Name System (query)
+    - Transaction ID: 0x5128 - идентификатор запроса (чтоб понять к какому запросу какой ответ)
+    - Flags: 0x0100 Standard query (флаг обычного запроса)
+    - Questions: 1 (по этому идентификатору 1 вопрос и 0 ответов)
+    Answer RRs: 0
+    Authority RRs: 0
+    Additional RRs: 1
+    Queries  (какое имя разрешаем; хотим получить IPv4, интернет класс)
+        microsoft.com: type A, class IN
+    Additional records
+        <Root>: type OPT
+    [Response In: 23] (показывает, в каком пакете ответ)
+
+(frame 23)
+на нижних уровнях все зеркально наоборот
+-> Domain Name System (response) 
+   - Transaction ID: 0x5128 - идентификатор запроса, на который отвечает
+    Flags: 0x8180 Standard query response, No error - сообщаем, что стандартный ответ, ошибок не выявлено
+    Questions: 1 (1 вопрос и 1 ответ)
+    Answer RRs: 1
+    Authority RRs: 0
+    Additional RRs: 1
+    Queries
+        microsoft.com: type A, class IN
+    Answers (ответ на запрос согласно запрашиваемой информации)
+        microsoft.com: type A, class IN, addr 150.171.109.197 (IP-address microsoft.com
+    Additional records
+        <Root>: type OPT
+    [Request In: 22]
+    [Time: 0.006364138 seconds]
+
+Как схематично работает dig [web-site]
+dig apple.com
+  |
+Создается DNS запрос
+  |
+UDP destination port 53
+  |
+IP destination = DNS-резолвер
+  |
+DNS-резолвер отвечает
+  |
+DNS answer содержит запись A (IP-address)
+  |
+dig показывает результаты в терминале
+
+5.3 dig @8.8.8.8 apple.com
+это запрос к DNS-серверу с IP-адресом 8.8.8.8 (публичный DNS-сервер Google) 
+для получения информации о домене apple.com
+
+5.4 dig A apple.com VS dig AAAA apple.com
+Разница в версиях IP (4 и 6)
+
+6. getent - позволяет запрашивать данные из различных системных баз данных, которые настраиваются в файле /etc/nsswitch.conf
+Для получения записей из библиотек Name Service Switch (NSS)
+
+команда getent hosts apple.com
+2620:149:af0::10 apple.com
+
+при запросе к несуществующему поддомену getent flldfdl.example.com
+Неизвестная база данных: flldfdl.example.com
+
+
+
