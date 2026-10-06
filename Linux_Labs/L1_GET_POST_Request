@@ -1,1 +1,114 @@
+Задание: Через curl и Python requests повторить один GET и один POST; отдельно задать header, cookie, JSON body; 
+сохранить status code и ключевые response headers.
+
+Команды (соберу по итогу лабы)
+curl [url]  // получаем веб-страницу
+curl -v [url] // получаем удобный режим, где отображается в читабельном виде запрос и ответ
+curl -i [url] // получаем заголовки запроса и ответа
+curl -H 'data' [url] // делаем запрос с определенным HTTP-заголовком
+// отправляем post запрос
+|_ curl -d 'data' [url] 
+|_ -d '{"email":"test@test.com","password":"12345"}'
+curl -b // отправить куки
+
+Прим.: большой curl лучше записывать через перенос, используя \
+
+Решение
+1. запускаем BurpSuite
+2. запускаем juice-shop
+3. Пробуем команду curl 
+curl http://localhost:3000  // получаем веб-страницу
+curl -v http://localhost:3000 // получаем удобный режим, где отображается в читабельном виде запрос и ответ
+curl -i -v http://localhost:3000 // получаем заголовки запроса и ответа
+
+3. простой get запрос с поиском banana
+curl -i -v 'http://localhost:3000/#/search?q=banana'
+
+3.1 зададим свой заголовок
+curl -i -v \
+-H 'Accept: application/json' \
+-H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36' \
+'http://localhost:3000/#/search?q=banana'
+
+> GET / HTTP/1.1
+> Host: localhost:3000
+> Accept: application/json
+> User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+
+< HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+
+3.2. изменим в cookie язык
+curl -i -v \
+-H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36' \
+-b 'language=en' \
+'http://localhost:3000/#/search?q=banana'
+
+4. попробуем залогиниться через curl
+так у нас выглядело тело POST-запроса в Burp: {"email":"test@test.com","password":"12345"}
+curl -X POST ... // уже избыточно и устарело   
+Вариант 1. POST application/x-www-form-urlencoded
+curl -v -i -d 'email=test@test.com&password=12345' http://localhost:3000/#/login
+
+// > - означает запрос клиента, < - ответ сервера
+
+* Connected to localhost (127.0.0.1) port 3000 (#0)
+> POST / HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/7.81.0
+> Accept: */*
+> Content-Length: 34
+> Content-Type: application/x-www-form-urlencoded
+
+< HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+< Access-Control-Allow-Origin: *
+Access-Control-Allow-Origin: *
+< X-Content-Type-Options: nosniff
+X-Content-Type-Options: nosniff
+< X-Frame-Options: SAMEORIGIN
+X-Frame-Options: SAMEORIGIN
+< Feature-Policy: payment 'self'
+Feature-Policy: payment 'self'
+
+Вариант 2. POST JSON
+Большинство API работают с JSON
+curl -i -v -H 'Content-Type: application/json' -d '{"email":"test@test.com","password":"12345"}' http://localhost:3000/#/login
+ИЛИ можно использовать --json '{"email":"test@test.com","password":"12345"}'
+> POST / HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/7.81.0
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 44
+
+< HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+
+5. Проверка аутентификации через curl
+curl -i -v -H 'Conntent-Type: application/json' -d '{"email":"test@test.com","password":"12345"}' \
+http://localhost:3000/#/login
+
+6. Сохраняем файлы результата выполнения curl
+curl -i -v -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36' 
+-b 'language=en' // отправляем куку с языком англ
+-D get_headers.txt // сохраняем заголовки ответа
+-o getbody.json // сохраняем тело ответа
+-w '%{http_code}\n' // после заврешения выводит только HTTP статус код
+'http://localhost:3000/#/search?q=banana' 
+> getstatus.txt // перенаправляем статус код в этой файл
+
+файлы были сохранены и в них были данные - так что все ок
+
+7. Пробуем через python request
+
+
+
+
+
+
+
+
+
+
 
