@@ -101,6 +101,100 @@ curl -i -v -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (K
 файлы были сохранены и в них были данные - так что все ок
 
 7. Пробуем через python request
+nano get_request.py
+
+import requests
+
+url = "http://localhost:3000/#/search"
+params = {
+        "q": "banana"
+}
+
+headers = {
+        "Accept": "application/json"
+}
+
+cookies = {
+        "language": "en"
+}
+
+response = requests.get(
+        url,
+        params=params,
+        headers=headers,
+        cookies=cookies
+)
+
+print("URL:", response.url)
+print("status code:", response.status_code)
+
+main_headers = [
+        "Content-Type",
+        "Contetnt-Lenght",
+        "Connection"
+]
+
+for name in main_headers:
+        if name in response.headers:
+                print(f"{name}: {response.headers[name]}")
+
+запускаем python3 get_request.py
+Получаем:
+URL: http://localhost:3000/?q=banana#/search
+status code: 200
+Content-Type: text/html; charset=UTF-8
+Connection: keep-alive
+
+8. POST request через Python
+nano post_requests.py
+import requests
+
+url = "http://localhost:3000/#/login"
+
+headers = {
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0>
+}
+
+body = {
+        "email": "test@test.com",
+        "password": "12345"
+}
+
+response = requests.post(
+        url,
+        headers=headers,
+        json=body
+)
+
+print("URL:", response.url)
+print("Status code:", response.status_code)
+
+for name in [
+        "Content-Type",
+        "Contetnt-Lenght",
+        "User-Agent",
+        "Connection",
+        "Set-Cookie",
+]:
+        if name in response.headers:
+                print(f"{name}: {response.headers[name]}")
+
+Запускаем python3 post_requests.py
+Получаем:
+URL: http://localhost:3000/#/login
+Status code: 200
+Content-Type: text/html; charset=UTF-8
+Connection: keep-alive
+
+
+
+
+
+
+
+
+
 
 
 
