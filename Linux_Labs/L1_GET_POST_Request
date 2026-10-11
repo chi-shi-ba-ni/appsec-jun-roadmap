@@ -187,20 +187,72 @@ Status code: 200
 Content-Type: text/html; charset=UTF-8
 Connection: keep-alive
 
+Часть 2. Проработка HTTP запросов через Burp Repeater 
+1. поиск товара
+GET /rest/products/search?q= HTTP/1.1
+ищем banana 
+Результат: получем status code 200 
 
+меняем User-Agent: MyBurp/1.1
+Результат: получем status code 200
 
+удалим Accept-Encoding: gzip, deflate, br
+Результат: получем status code 200
 
+удалим Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3
+Результат: получем status code 200
 
+удалим:
+Accept: application/json, text/plain, */*
+Результат: получем status code 200
 
+удалим Host: localhost:3000
+Результат: 400 Bad Request
 
+удалим User-Agent: MyBurp/1.1
+Результат: получем status code 200
 
+удалим Referer: http://localhost:3000/
+Результат: получем status code 200
 
+удалим часть куки 
+Результат: получем status code 200
 
+2. логин
+{"email":"test@test.com","password":"12345"}
+Результат: HTTP/1.1 200 OK
 
+{"email":"test@test.com","password":"145"}
+Результат: HTTP/1.1 401 Unauthorized
 
+заменим при парвильном пароле Content-Type: text/plain
+Результат: HTTP/1.1 401 Unauthorized
+Вывод: сервер не воспринимате это как JSON-запрос
 
+отправим без кавычки {"email":"test@test.com","password":"12345}
+Результат: HTTP/1.1 500 Internal Server Error
+"message": "Unterminated string in JSON at position 43 (line 1 column 44)",
 
+отправим {"email":"test@test.com","password":"12345", "blabla":"hi there"}
+Результат: HTTP/1.1 200 OK
+Вывод: мы можем передать туда инъекцию
 
+3. аутентификация
+уберем из Authorizarion пару букв
+Реузльтат: HTTP/1.1 401 Unauthorized
+    "message": "invalid signature",
+    "name": "UnauthorizedError",
+    "code": "invalid_token",
+    "status": 401,
+
+уберем вообще заголовок Authorizarion
+Результат: HTTP/1.1 401 Unauthorized
+   "message": "No Authorization header was found",
+    "name": "UnauthorizedError",
+    "code": "credentials_required",
+    "status": 401,
+    "inner": {
+      "message": "No Authorization header was found"
 
 
 
